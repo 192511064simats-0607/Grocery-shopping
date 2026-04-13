@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FreshMart – Online Grocery Store</title>
+  <meta name="description" content="Order fresh groceries online with WhatsApp order tracking, live delivery updates and seamless cart experience." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ========== LOADER ========== -->
+  <div id="loader" class="loader">
+    <div class="loader-inner">
+      <div class="loader-cart">🛒</div>
+      <div class="loader-bar"><div class="loader-fill"></div></div>
+      <p>Loading FreshMart...</p>
+    </div>
+  </div>
+
+  <!-- ========== TOAST NOTIFICATION ========== -->
+  <div id="toast" class="toast"></div>
+
+  <!-- ========== FLOATING CART ========== -->
+  <button id="floatCart" class="float-cart" aria-label="Open Cart">
+    🛒
+    <span id="cartBadge" class="cart-badge hidden">0</span>
+  </button>
+
+  <!-- ========== CART SIDEBAR ========== -->
+  <div id="cartOverlay" class="cart-overlay"></div>
+  <aside id="cartSidebar" class="cart-sidebar">
+    <div class="cart-header">
+      <h2>🛒 Your Cart</h2>
+      <button id="closeCart" class="close-btn">✕</button>
+    </div>
+    <div id="cartItems" class="cart-items">
+      <div class="cart-empty">
+        <span>🛒</span>
+        <p>Your cart is empty</p>
+        <small>Add items to get started!</small>
+      </div>
+    </div>
+    <div class="cart-footer">
+      <div class="cart-summary">
+        <div class="summary-row"><span>Subtotal</span><span id="cartSubtotal">₹0.00</span></div>
+        <div class="summary-row"><span>Delivery</span><span id="cartDelivery">₹40.00</span></div>
+        <div class="summary-row total"><span>Total</span><span id="cartTotal">₹0.00</span></div>
+      </div>
+      <button id="checkoutBtn" class="btn-checkout" disabled>Proceed to Checkout 🚀</button>
+    </div>
+  </aside>
+
+  <!-- ========== PAYMENT MODAL ========== -->
+  <div id="paymentModal" class="modal-overlay hidden">
+    <div class="modal payment-modal">
+      <button class="modal-close" id="closePayment">✕</button>
+      <div class="modal-header">
+        <h2>💳 Secure Checkout</h2>
+        <p>Complete your order in seconds</p>
+      </div>
+      <div class="payment-steps">
+        <div class="step active" id="stepInfo">
+          <div class="step-num">1</div><span>Details</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" id="stepPay">
+          <div class="step-num">2</div><span>Payment</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" id="stepDone">
+          <div class="step-num">3</div><span>Confirm</span>
+        </div>
+      </div>
+
+      <!-- Step 1: User Info -->
+      <div id="formInfo" class="form-section">
+        <h3>Delivery Information</h3>
+        <div class="form-group"><label>Full Name</label><input id="userName" type="text" placeholder="John Doe" /></div>
+        <div class="form-group"><label>Phone (WhatsApp)</label><input id="userPhone" type="tel" placeholder="+91 9876543210" /></div>
+        <div class="form-group"><label>Delivery Address</label><textarea id="userAddress" rows="3" placeholder="House No., Street, City..."></textarea></div>
+        <button class="btn-primary" onclick="goToPayment()">Continue to Payment →</button>
+      </div>
+
+      <!-- Step 2: Payment -->
+      <div id="formPay" class="form-section hidden">
+        <h3>Payment Method</h3>
+        <div class="payment-methods">
+          <label class="pay-method active" data-method="upi">
+            <input type="radio" name="payMethod" value="upi" checked />
+            <span class="pay-icon">📱</span>
+            <span>UPI</span>
+          </label>
+          <label class="pay-method" data-method="card">
+            <input type="radio" name="payMethod" value="card" />
+            <span class="pay-icon">💳</span>
+            <span>Card</span>
+          </label>
+          <label class="pay-method" data-method="cod">
+            <input type="radio" name="payMethod" value="cod" />
+            <span class="pay-icon">💵</span>
+            <span>Cash on Delivery</span>
+          </label>
+          <label class="pay-method" data-method="netbank">
+            <input type="radio" name="payMethod" value="netbank" />
+            <span class="pay-icon">🏦</span>
+            <span>Net Banking</span>
+          </label>
+        </div>
+        <div id="upiSection" class="pay-detail-section">
+          <div class="form-group"><label>UPI ID</label><input type="text" placeholder="name@upi" /></div>
+        </div>
+        <div id="cardSection" class="pay-detail-section hidden">
+          <div class="form-group"><label>Card Number</label><input type="text" placeholder="1234 5678 9012 3456" maxlength="19" /></div>
+          <div class="form-row">
+            <div class="form-group"><label>Expiry</label><input type="text" placeholder="MM/YY" /></div>
+            <div class="form-group"><label>CVV</label><input type="text" placeholder="123" maxlength="3" /></div>
+          </div>
+        </div>
+        <div class="order-summary-mini">
+          <h4>Order Summary</h4>
+          <div id="miniCartItems"></div>
+          <div class="mini-total">Total: <strong id="miniTotal">₹0.00</strong></div>
+        </div>
+        <button class="btn-primary pay-btn" onclick="processPayment()">
+          <span class="pay-btn-text">Pay Now 🔐</span>
+          <span class="pay-spinner hidden">⏳ Processing...</span>
+        </button>
+      </div>
+
+      <!-- Step 3: Confirmation -->
+      <div id="formDone" class="form-section hidden">
+        <div class="success-animation">
+          <div class="checkmark">✓</div>
+          <h2>Order Placed! 🎉</h2>
+          <p id="confirmMsg">Your order has been confirmed!</p>
+          <div id="orderId" class="order-id"></div>
+        </div>
+        <div class="whatsapp-actions">
+          <p>Track your order via WhatsApp:</p>
+          <button id="waConfirmBtn" class="btn-whatsapp" onclick="sendWhatsAppConfirmation()">
+            <span>📲</span> Send Order Confirmation
+          </button>
+          <button id="waTrackBtn" class="btn-whatsapp secondary" onclick="sendWhatsAppTracking()">
+            <span>📍</span> Get Delivery Updates
+          </button>
+        </div>
+        <button class="btn-primary btn-track-full" onclick="openTracking()">📦 Track My Order</button>
+        <button class="btn-outline" onclick="continueShopping()">Continue Shopping</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DELIVERY TRACKER MODAL ========== -->
+  <div id="trackerModal" class="modal-overlay hidden">
+    <div class="modal tracker-modal">
+      <button class="modal-close" onclick="closeTracker()">✕</button>
+      <div class="modal-header">
+        <h2>📦 Order Tracking</h2>
+        <p id="trackerOrderId">Order #FM-000000</p>
+      </div>
+      <div class="tracker-map">
+        <div class="map-bg">
+          <div class="delivery-bike" id="deliveryBike">🛵</div>
+          <div class="map-path"></div>
+          <div class="store-pin">🏪</div>
+          <div class="home-pin">🏠</div>
+        </div>
+        <div class="eta-badge">
+          <span>⏱</span>
+          <div>
+            <small>Estimated Arrival</small>
+            <strong id="etaTime">30 mins</strong>
+          </div>
+        </div>
+      </div>
+      <div class="delivery-steps">
+        <div class="d-step completed" id="ds1">
+          <div class="d-step-icon">✅</div>
+          <div class="d-step-info">
+            <strong>Order Placed</strong>
+            <small id="ds1Time"></small>
+          </div>
+        </div>
+        <div class="d-step-connector"></div>
+        <div class="d-step" id="ds2">
+          <div class="d-step-icon">🔄</div>
+          <div class="d-step-info">
+            <strong>Order Confirmed</strong>
+            <small>Seller confirmed your order</small>
+          </div>
+        </div>
+        <div class="d-step-connector"></div>
+        <div class="d-step" id="ds3">
+          <div class="d-step-icon">📦</div>
+          <div class="d-step-info">
+            <strong>Packed & Ready</strong>
+            <small>Items being packed</small>
+          </div>
+        </div>
+        <div class="d-step-connector"></div>
+        <div class="d-step" id="ds4">
+          <div class="d-step-icon">🛵</div>
+          <div class="d-step-info">
+            <strong>Out for Delivery</strong>
+            <small>Rider is on the way</small>
+          </div>
+        </div>
+        <div class="d-step-connector"></div>
+        <div class="d-step" id="ds5">
+          <div class="d-step-icon">🏠</div>
+          <div class="d-step-info">
+            <strong>Delivered</strong>
+            <small>Enjoy your groceries!</small>
+          </div>
+        </div>
+      </div>
+      <div class="whatsapp-actions mt-16">
+        <button class="btn-whatsapp" onclick="sendOutForDeliveryWA()">
+          <span>📲</span> Get "Out for Delivery" Update on WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== NAVBAR ========== -->
+  <header class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="logo">
+        <span class="logo-icon">🛒</span>
+        <span class="logo-text">Fresh<span class="accent">Mart</span></span>
+      </a>
+      <nav class="nav-links">
+        <a href="#hero">Home</a>
+        <a href="#categories">Categories</a>
+        <a href="#products">Products</a>
+        <a href="#offers">Offers</a>
+        <a href="#track" onclick="openTracking()">Track Order</a>
+      </nav>
+      <div class="nav-actions">
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Search groceries..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <button class="btn-cart-nav" onclick="openCart()">
+          🛒 Cart <span id="navCartCount" class="nav-badge hidden">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== HERO SECTION ========== -->
+  <section class="hero" id="hero">
+    <div class="hero-bg-anim"></div>
+    <div class="hero-container">
+      <div class="hero-content">
+        <div class="hero-badge animate-in">🌿 Fresh • Fast • Delivered</div>
+        <h1 class="hero-title animate-in delay-1">
+          Groceries Delivered<br />
+          <span class="gradient-text">Fresh to Your Door</span>
+        </h1>
+        <p class="hero-subtitle animate-in delay-2">
+          Order fresh produce, dairy, bakery and more. Track your delivery live on WhatsApp. 30-minute delivery guarantee!
+        </p>
+        <div class="hero-actions animate-in delay-3">
+          <a href="#products" class="btn-primary btn-hero">Shop Now 🛍️</a>
+          <button class="btn-ghost btn-hero" onclick="openTracking()">Track Order 📦</button>
+        </div>
+        <div class="hero-stats animate-in delay-4">
+          <div class="stat"><strong>50K+</strong><small>Happy Customers</small></div>
+          <div class="stat-divider"></div>
+          <div class="stat"><strong>1200+</strong><small>Products</small></div>
+          <div class="stat-divider"></div>
+          <div class="stat"><strong>30 min</strong><small>Avg Delivery</small></div>
+        </div>
+      </div>
+      <div class="hero-image animate-in delay-2">
+        <div class="hero-img-wrapper">
+          <div class="hero-visual-card">
+            <div class="hero-visual-bg"></div>
+            <div class="hero-badge-row">
+              <div class="hero-badge-float badge-1">🎯 30 Min Delivery</div>
+              <div class="hero-badge-float badge-2">✅ 100% Fresh</div>
+            </div>
+            <div class="hero-visual-center">
+              <span class="hero-visual-emoji">🛒</span>
+              <p>FreshMart</p>
+            </div>
+            <div class="hero-badge-row">
+              <div class="hero-badge-float badge-3">📲 WhatsApp Tracking</div>
+              <div class="hero-badge-float badge-4">🚀 Fast Checkout</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-wave">
+      <svg viewBox="0 0 1440 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,50 C360,100 1080,0 1440,50 L1440,100 L0,100 Z" fill="#f8fafc"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ========== MARQUEE STRIP ========== -->
+  <div class="marquee-strip">
+    <div class="marquee-inner">
+      <span>🌿 100% Organic Produce</span>
+      <span>⚡ 30-Min Delivery</span>
+      <span>📲 WhatsApp Tracking</span>
+      <span>🎁 Free Delivery on ₹499+</span>
+      <span>❄️ Cold Chain Maintained</span>
+      <span>🏆 Best Quality Guaranteed</span>
+      <span>🌿 100% Organic Produce</span>
+      <span>⚡ 30-Min Delivery</span>
+      <span>📲 WhatsApp Tracking</span>
+      <span>🎁 Free Delivery on ₹499+</span>
+      <span>❄️ Cold Chain Maintained</span>
+      <span>🏆 Best Quality Guaranteed</span>
+    </div>
+  </div>
+
+  <!-- ========== CATEGORIES SECTION ========== -->
+  <section class="categories-section" id="categories">
+    <div class="section-container">
+      <div class="section-header">
+        <h2>Shop by <span class="gradient-text">Category</span></h2>
+        <p>Fresh products across all categories, sourced daily</p>
+      </div>
+      <div class="categories-grid">
+        <div class="category-card active" data-cat="all" onclick="filterCategory('all')">
+          <div class="cat-icon">🛒</div>
+          <span>All Items</span>
+        </div>
+        <div class="category-card" data-cat="vegetables" onclick="filterCategory('vegetables')">
+          <div class="cat-icon">🥦</div>
+          <span>Vegetables</span>
+        </div>
+        <div class="category-card" data-cat="fruits" onclick="filterCategory('fruits')">
+          <div class="cat-icon">🍎</div>
+          <span>Fruits</span>
+        </div>
+        <div class="category-card" data-cat="dairy" onclick="filterCategory('dairy')">
+          <div class="cat-icon">🥛</div>
+          <span>Dairy</span>
+        </div>
+        <div class="category-card" data-cat="bakery" onclick="filterCategory('bakery')">
+          <div class="cat-icon">🍞</div>
+          <span>Bakery</span>
+        </div>
+        <div class="category-card" data-cat="beverages" onclick="filterCategory('beverages')">
+          <div class="cat-icon">🧃</div>
+          <span>Beverages</span>
+        </div>
+        <div class="category-card" data-cat="snacks" onclick="filterCategory('snacks')">
+          <div class="cat-icon">🍿</div>
+          <span>Snacks</span>
+        </div>
+        <div class="category-card" data-cat="meat" onclick="filterCategory('meat')">
+          <div class="cat-icon">🥩</div>
+          <span>Meat & Fish</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== PRODUCTS SECTION ========== -->
+  <section class="products-section" id="products">
+    <div class="section-container">
+      <div class="section-header">
+        <h2>Fresh <span class="gradient-text">Picks Today</span></h2>
+        <p>Handpicked fresh products delivered to your doorstep</p>
+      </div>
+      <div class="filter-bar">
+        <select id="sortSelect" onchange="sortProducts()">
+          <option value="default">Sort: Default</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="name">Name A-Z</option>
+          <option value="rating">Top Rated</option>
+        </select>
+        <div class="results-count"><span id="resultsCount">0</span> products found</div>
+      </div>
+      <div class="products-grid" id="productsGrid">
+        <!-- Products injected by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== OFFERS SECTION ========== -->
+  <section class="offers-section" id="offers">
+    <div class="section-container">
+      <div class="section-header">
+        <h2>🔥 Today's <span class="gradient-text">Hot Deals</span></h2>
+        <p>Limited time offers — grab before they expire!</p>
+      </div>
+      <div class="offers-grid">
+        <div class="offer-card offer-1">
+          <div class="offer-overlay">
+            <h3>Fresh Vegetables</h3>
+            <p>Up to 40% OFF on all seasonal vegetables</p>
+            <button class="btn-offer" onclick="filterCategory('vegetables')">Shop Now →</button>
+            <div class="offer-badge">40% OFF</div>
+          </div>
+        </div>
+        <div class="offer-card offer-2">
+          <div class="offer-overlay">
+            <h3>Dairy Specials</h3>
+            <p>Buy 2 Get 1 FREE on select dairy products</p>
+            <button class="btn-offer" onclick="filterCategory('dairy')">Shop Now →</button>
+            <div class="offer-badge">B2G1</div>
+          </div>
+        </div>
+        <div class="offer-card offer-3">
+          <div class="offer-overlay">
+            <h3>Free Delivery</h3>
+            <p>Free delivery on orders above ₹499</p>
+            <button class="btn-offer" onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">Shop Now →</button>
+            <div class="offer-badge">FREE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== WHATSAPP FEATURES SECTION ========== -->
+  <section class="wa-section">
+    <div class="section-container">
+      <div class="wa-grid">
+        <div class="wa-content">
+          <div class="wa-badge">📲 WhatsApp Integration</div>
+          <h2>Track Your Order<br /><span class="gradient-text">Live on WhatsApp</span></h2>
+          <p>Get real-time updates on your order status directly on WhatsApp. From confirmation to doorstep delivery, stay informed every step of the way.</p>
+          <div class="wa-features">
+            <div class="wa-feature">
+              <span class="wa-f-icon">✅</span>
+              <div>
+                <strong>Order Confirmation</strong>
+                <small>Instant WhatsApp message when order is placed</small>
+              </div>
+            </div>
+            <div class="wa-feature">
+              <span class="wa-f-icon">📦</span>
+              <div>
+                <strong>Packing Updates</strong>
+                <small>Know when your order is being packed</small>
+              </div>
+            </div>
+            <div class="wa-feature">
+              <span class="wa-f-icon">🛵</span>
+              <div>
+                <strong>Out for Delivery</strong>
+                <small>Real-time location of your delivery rider</small>
+              </div>
+            </div>
+            <div class="wa-feature">
+              <span class="wa-f-icon">🏠</span>
+              <div>
+                <strong>Delivery Confirmation</strong>
+                <small>Confirmation when your order arrives</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="wa-phone-mockup">
+          <div class="phone-frame">
+            <div class="phone-screen">
+              <div class="wa-chat-header">
+                <div class="wa-avatar">🛒</div>
+                <div>
+                  <strong>FreshMart</strong>
+                  <small>Online</small>
+                </div>
+              </div>
+              <div class="wa-messages" id="waMsgs">
+                <div class="wa-msg received animate-msg">
+                  <p>✅ Order #FM-123456 confirmed!</p>
+                  <small>10:30 AM</small>
+                </div>
+                <div class="wa-msg received animate-msg delay-1">
+                  <p>📦 Your order is being packed...</p>
+                  <small>10:35 AM</small>
+                </div>
+                <div class="wa-msg received animate-msg delay-2">
+                  <p>🛵 Rider is on the way! ETA: 15 mins</p>
+                  <small>10:50 AM</small>
+                </div>
+                <div class="wa-msg received animate-msg delay-3">
+                  <p>🏠 Order delivered! Enjoy your groceries 🥗</p>
+                  <small>11:05 AM</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== FOOTER ========== -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <div class="logo"><span class="logo-icon">🛒</span><span class="logo-text">Fresh<span class="accent">Mart</span></span></div>
+        <p>Your neighborhood grocery store, now online. Fresh, fast, and always reliable.</p>
+        <div class="social-links">
+          <a href="#" aria-label="Facebook">📘</a>
+          <a href="#" aria-label="Instagram">📸</a>
+          <a href="#" aria-label="WhatsApp">📲</a>
+          <a href="#" aria-label="Twitter">🐦</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="#hero">Home</a></li>
+          <li><a href="#categories">Categories</a></li>
+          <li><a href="#products">Products</a></li>
+          <li><a href="#offers">Offers</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Help</h4>
+        <ul>
+          <li><a href="#">FAQ</a></li>
+          <li><a href="#">Return Policy</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <ul>
+          <li>📞 +91 98765 43210</li>
+          <li>📧 support@freshmart.in</li>
+          <li>📍 Chennai, Tamil Nadu</li>
+          <li>⏰ 8 AM – 10 PM daily</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 FreshMart. All rights reserved. Made with ❤️ for fresh food lovers.</p>
+    </div>
+  </footer>
+
+  <!-- ========== ELFSIGHT WHATSAPP CHAT ========== -->
+  <script src="https://elfsightcdn.com/platform.js" async></script>
+  <div class="elfsight-app-c9cc0622-d43e-4b96-8573-f8c0ba498365" data-elfsight-app-lazy></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
